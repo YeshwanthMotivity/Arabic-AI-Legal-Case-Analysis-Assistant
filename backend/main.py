@@ -84,14 +84,18 @@ async def startup_event():
         # Inject analysis capability into chat engine
         chat_engine.set_analyzer(execute_full_analysis)
         
-        logger.info("✅ System ready. All engines loaded successfully.")
-        logger.info("   🔍 Similarity Engine: READY")
-        logger.info("   📝 Summarizer Engine: READY")
-        logger.info("   💬 Chat Engine: READY")
-        logger.info("   🏷️ Classification Engine: READY")
-        logger.info("   ⚖️ Legal Principles Engine: READY")
-        logger.info("   📊 Trend Analyzer: READY")
-        logger.info("   💡 Recommendation Engine: READY")
+        # EAGER LOADING (Hybrid): 
+        # 1. Similarity Model (SBERT): Pre-load for fast document analysis
+        if similarity_engine and hasattr(similarity_engine, 'model'):
+            logger.info("Pre-warming Similarity Engine (SBERT)...")
+            similarity_engine.model.encode(["ping"])
+
+        # 2. LLM (Qwen): Load ONCE at startup to prevent freezing during chat
+        if chat_engine.llm:
+            logger.info("Loading LLM Model (Qwen)... This may take a moment.")
+            chat_engine.llm.load_model()
+        
+        logger.info("✅ System ready. SBERT & LLM are pre-loaded via Hybrid Strategy.")
     except Exception as e:
         logger.error(f"CRITICAL STARTUP ERROR: {e}", exc_info=True)
 
@@ -167,6 +171,12 @@ async def execute_full_analysis(text: str, top_k: int = 5) -> AnalyzeResponse:
     if not similarity_engine:
         raise ValueError("Similarity engine not initialized")
     
+    # NEW OPTIMIZATION: Cap text to 3000 chars to avoid CPU bottleneck
+    # Large PDFs (e.g. 25k chars) cause classification and LLM to hang on CPU
+    if len(text) > 3000:
+        logger.info(f"Capping input text from {len(text)} to 3000 chars for performance.")
+        text = text[:3000]
+    
     # Step 0: Extract Entities
     logger.info("Step 0/5: Extracting entities...")
     entities = EntityExtractor.extract(text)
@@ -178,7 +188,7 @@ async def execute_full_analysis(text: str, top_k: int = 5) -> AnalyzeResponse:
         case_type=classification_raw["case_type"],
         name_ar=classification_raw["name_ar"],
         name_en=classification_raw["name_en"],
-        confidence=classification_raw["confidence"],
+        confidence=0.0, # Removed per user request
         matched_keywords=classification_raw["matched_keywords"],
         sub_types=[SubType(**st) for st in classification_raw.get("sub_types", [])]
     )
@@ -207,7 +217,7 @@ async def execute_full_analysis(text: str, top_k: int = 5) -> AnalyzeResponse:
         recommendation_ar=recommendation_raw["recommendation_ar"],
         recommendation_en=recommendation_raw["recommendation_en"],
         direction=recommendation_raw["direction"],
-        confidence=recommendation_raw["confidence"],
+        confidence=0.0, # Removed per user request
         disclaimer_ar=recommendation_raw["disclaimer_ar"],
         disclaimer_en=recommendation_raw["disclaimer_en"],
         supporting_principles=[

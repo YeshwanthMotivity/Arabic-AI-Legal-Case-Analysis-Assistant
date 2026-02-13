@@ -356,29 +356,48 @@ How can I help you today?""",
         # Currency Scrub
         rec_text_en = rec_text_en.replace("Rs.", "SAR").replace("rupees", "SAR").replace("Rupees", "SAR")
         
-        win_rate = trends.get("plaintiff_win_rate", "N/A")
         sample_size = trends.get("sample_size", 0)
         
-        response_ar = f"""[Summary] ملخص التحليل:
+        # Determine if this is a final judgment
+        direction = recommendation.get("direction", "").lower()
+        is_judgement = direction == "decided_judgement" or "حكم" in str(recommendation.get("recommendation_ar", "")).lower() or trends.get("is_judgement", False)
+        
+        award_amount = analysis.get("entities", {}).get("compensation_amount") or recommendation.get("award_amount") or "غير محدد"
+
+        if is_judgement:
+            header_ar = "📋 ملخص منطوق الحكم (Final Ruling):"
+            header_en = "📋 **Final Court Ruling Summary:**"
+            win_rate_ar = f"💡 **حالة القضية:** تم الحكم فيها (منطوق حكم)"
+            win_rate_en = f"💡 **Case Status:** Decided Judgment"
+        else:
+            win_rate = trends.get("plaintiff_win_rate", "N/A")
+            header_ar = "[Summary] ملخص التحليل:"
+            header_en = "[Summary] **Case Analysis Summary:**"
+            win_rate_ar = f"**نسبة فوز المدعي (تاريخياً):** {win_rate}% (بناءً على {sample_size} سوابق قضائية)"
+            win_rate_en = f"**Historical Plaintiff Win Rate:** {win_rate}% (Based on {sample_size} local precedents)"
+
+        response_ar = f"""{header_ar}
 
 **نوع القضية:** {clf.get('name_ar', 'N/A')}
-**نسبة فوز المدعي (تاريخياً):** {win_rate}% (بناءً على {sample_size} سوابق قضائية)
+{win_rate_ar}
+**المبلغ المحكوم به/المطالب به:** {award_amount}
 
 **المبادئ القانونية المطبقة:**
 {principles_text_ar}
 
-**التوصية:**
+**التوصية/الخلاصة:**
 {rec_text_ar}"""
 
-        response_en = f"""[Summary] **Case Analysis Summary:**
+        response_en = f"""{header_en}
 
 **Case Type:** {clf.get('name_en', 'N/A')}
-**Historical Plaintiff Win Rate:** {win_rate}% (Based on {sample_size} local precedents)
+{win_rate_en}
+**Awarded/Claimed Amount:** {award_amount}
 
 **Applicable Legal Principles:**
 {principles_text_en}
 
-**Recommendation:**
+**Recommendation/Outcome:**
 {rec_text_en}"""
 
         return {
@@ -435,16 +454,25 @@ Case Classification:
         case_status_ar = f"نسبة فوز المدعي: {win_rate}%" if not is_judgement else "تم الحكم فيها"
         case_status_en = f"Plaintiff Win Rate: {win_rate}%" if not is_judgement else "Already Judged"
 
-        ar_text = f"🔍 نتائج البحث عن قضايا مشابهة:\n\nلقد وجدنا قضايا مرتبطة بنوع: **{case_type_ar}**. (إجمالي العينة: {sample_size} قضايا)\n\n**الإحصائيات المستخلصة من السوابق:**\n• حالة القضية: {case_status_ar}\n• متوسط التعويض: {ar_comp}"
-        en_text = f"🔍 **Similar Case Results:**\n\nWe found precedents related to: **{case_type_en}**. (Total sample: {sample_size} cases)\n\n**Extracted Trend Data:**\n• Case Status: {case_status_en}\n• Average Compensation: {en_comp}"
+        if is_judgement:
+            ar_text = f"🔍 تم رصد أن هذه القضية محكومة بالفعل بموجب صك حكم.\n\nنوع القضية المستخلص: **{case_type_ar}**.\n\n**تفاصيل المنطوق:**\n• الحالة: حكم قضائي نافذ\n• مبلغ الإلزام: {analysis.get('entities', {}).get('compensation_amount') or 'راجع المنطوق'}"
+            en_text = f"🔍 **This is a Decided Judgment:**\n\nExtracted Case Type: **{case_type_en}**.\n\n**Ruling Details:**\n• Status: Legally Binding Judgment\n• Awarded Amount: {analysis.get('entities', {}).get('compensation_amount') or 'See text'}"
+            suggested_actions = [
+                {"label": "Full Analysis | تحليل شامل", "action": "full_analysis"},
+                {"label": "Enforcement | طلب تنفيذ", "action": "draft_enforcement"}
+            ]
+        else:
+            ar_text = f"🔍 نتائج البحث عن قضايا مشابهة:\n\nلقد وجدنا قضايا مرتبطة بنوع: **{case_type_ar}**. (إجمالي العينة: {sample_size} قضايا)\n\n**الإحصائيات المستخلصة من السوابق:**\n• حالة القضية: {case_status_ar}\n• متوسط التعويض: {ar_comp}"
+            en_text = f"🔍 **Similar Case Results:**\n\nWe found precedents related to: **{case_type_en}**. (Total sample: {sample_size} cases)\n\n**Extracted Trend Data:**\n• Case Status: {case_status_en}\n• Average Compensation: {en_comp}"
+            suggested_actions = [
+                {"label": "Full Analysis | تحليل شامل", "action": "full_analysis"},
+                {"label": "Recommendations | التوصيات", "action": "recommendations"}
+            ]
 
         return {
             "text": f"{ar_text}\n\n---\n\n{en_text}",
             "intent": "similar_cases",
-            "suggested_actions": [
-                {"label": "Full Analysis | تحليل شامل", "action": "full_analysis"},
-                {"label": "Recommendations | التوصيات", "action": "recommendations"}
-            ]
+            "suggested_actions": suggested_actions
         }
     
     async def _handle_legal_principles(self, query: str, analysis: Dict) -> Dict[str, Any]:
@@ -492,37 +520,62 @@ Case Classification:
                 
                 system_prompt = """أنت محامي سعودي خبير بالأنظمة التجارية والمدنية والجزائية.
 يجب أن تكون التوصيات عملية وإجرائية (Actionable Advice).
-استخدم عملة 'SAR' أو 'ريال سعودي' حصراً. لا تستخدم 'Rs.' أو 'الروبية' أبداً."""
+استخدم عملة 'SAR' أو 'ريال سعودي' حصراً. لا تستخدم 'Rs.' أو 'الروبية' أبداً.
+نظام العمل السعودي مرجعه (1426هـ / 2005م).
+
+STRICT GROUNDING RULES:
+1. لا تقم أبداً باختراع أسماء شركات (مثل BC) أو أشخاص. استخدم "............" للمعلومات الناقصة.
+2. التزم بالحقائق المستخلصة من النص المرفق حصراً.
+3. إذا كان النص حكماً قضائياً (Judgement)، لا تتحدث عن احتمالات الفوز، بل اشرح للمستخدم أن الحكم صدر لصالحه أو ضده وما هي الخطوات التالية للتنفيذ."""
 
                 if is_judgement:
                     system_prompt += """
 السياق الحالي: مرحلة ما بعد الحكم (Post-Judgment).
-المهام المطلوبة في التوصية:
-1. المبادرة بتقديم طلب تنفيذ إلكتروني (Execution Request) عبر بوابة ناجز.
-2. التأكد من تاريخ صدور الحكم لحساب مدة الاعتراض (30 يوماً).
-3. في حال عدم السداد، التوصية بإجراءات الحجز (Asset Tracing & Freezing).
-لا تطلب من المستخدم 'البحث عن أدلة' أو 'تحقيق إضافي' فالقضية محكومة."""
+اشرح للمستخدم ماذا يعني الحكم الصادر وكيف يمكنه التنفيذ عبر ناجز."""
                 else:
                     system_prompt += """
 السياق الحالي: مرحلة ما قبل التقاضي/نزاع (Pre-litigation).
-المهام المطلوبة في التوصية:
-1. حصر الأدلة والأسانيد (العقود، المراسلات، تقارير الخبرة).
-2. استكمال المتطلبات النظامية حسب نوع القضية.
-3. تقدير الموقف القانوني بناءً على سوابق المحاكم العامة."""
+انصح المستخدم بالأدلة التي يحتاجها لتقوية موقفه."""
                 
-                prompt = f"بناءً على تحليل القضية: {case_context}\n\nقدم توصية قانونية عملية واحترافية (بالعربية أولاً ثم الإنجليزية)."
-                generated_rec = self.llm.generate(prompt, system_prompt=system_prompt)
+                # OPTIMIZATION: Structured Prompt + Input Capping
+                # 1. Cap case text to avoid 25k char overload
+                case_text_from_context = self.context.case_text or ""
+                short_case_text = case_text_from_context[:3000]
                 
-                # Global Currency Scrub
-                generated_rec = generated_rec.replace("Rs.", "SAR").replace("rupees", "SAR").replace("Rupees", "SAR")
+                entities = analysis.get("entities", {})
                 
+                # 2. Structured Prompt with Fact Injection
+                prompt = f"""STRICT GROUNDING TASK:
+Case Facts:
+- Parties: Plaintiff: {entities.get('plaintiff', 'Unknown')}, Defendant: {entities.get('defendant', 'Unknown')}
+- Case Type: {classification.get('name_en', 'N/A')}
+- Award/Amount: {entities.get('compensation_amount') or recommendation.get('award_amount', 'N/A')}
+- Is Final Judgment: {is_judgement}
+
+Document Content:
+{short_case_text}
+
+Task: Provide clear legal advice based ONLY on these facts.
+Format: Arabic first, then English.
+"""
+                generated_rec = await self.llm.generate(prompt, system_prompt=system_prompt, max_new_tokens=400)
+                
+                # Filtering common hallucinated placeholders
+                generated_rec = generated_rec.replace("Company BC", "............").replace("BC Company", "............")
+
+                suggested_actions = [
+                    {"label": "Similar Cases | قضايا مشابهة", "action": "similar_cases"},
+                    {"label": "Full Analysis | تحليل شامل", "action": "full_analysis"}
+                ]
+                
+                # Filter out Claim action if already judged
+                if not is_judgement:
+                     suggested_actions.append({"label": "Draft Claim | كتابة لائحة دعوى", "action": "draft_claim"})
+
                 return {
                     "text": generated_rec,
                     "intent": "recommendation",
-                    "suggested_actions": [
-                        {"label": "Similar Cases | قضايا مشابهة", "action": "similar_cases"},
-                        {"label": "Full Analysis | تحليل شامل", "action": "full_analysis"}
-                    ]
+                    "suggested_actions": suggested_actions
                 }
             except: pass
 
@@ -571,8 +624,8 @@ Case Classification:
 موضوع الدعوى: {case_type}
 
 1. الأطراف:
-   - المدعي: ............
-   - المدعى عليه: ............
+   - المدعي: {plaintiff}
+   - المدعى عليه: {defendant}
 
 2. وقائع الدعوى:
 {facts_summary}
@@ -588,8 +641,8 @@ Case Classification:
 [Draft] **Plaintiff Claim Draft:**
 
 1. Parties:
-   - Plaintiff: ............
-   - Defendant: ............
+   - Plaintiff: {plaintiff}
+   - Defendant: {defendant}
 
 2. Factual Summary:
 {facts_summary_en}
@@ -602,8 +655,9 @@ Case Classification:
 إلى محكمة: {court_name}
 
 1. الأطراف:
-   - المدعي: ............
-   - المدعى عليه: ............
+   - المدعي: {plaintiff}
+   - المدعى عليه: {defendant}
+"""
 
 2. ملخص الرد:
 {facts_summary}
@@ -627,8 +681,9 @@ Case Classification:
 
     ENFORCEMENT_TEMPLATE = """[Draft] **طلب تنفيذ:**
 
-1. طالب التنفيذ: ............
-2. المنفذ ضده: ............
+1. طالب التنفيذ: {plaintiff}
+2. المنفذ ضده: {defendant}
+"""
 
 3. ملخص المستحقات:
 {facts_summary}
@@ -661,22 +716,24 @@ Case Classification:
         if self.llm:
             try:
                 legal_context, citations = self._get_legal_context(case_type_ar)
+                # OPTIMIZATION: Cap input
+                short_case_text = case_text[:3000]
+                
                 target_prompt = f"""STRICT GROUNDING TASK:
 Draft facts and legal grounds for a '{case_type_ar}' claim.
-CASE TEXT: {case_text}
+CASE CONTEXT (TRUNCATED): {short_case_text}
 CLAIM AMOUNT: {amount} SAR
 ROLES: Plaintiff (Claimant), Defendant (Respondent).
 
 STRICT INSTRUCTIONS:
-- Use ONLY facts from the CASE TEXT.
+- Use ONLY facts from the provided text. NEVER invent names. Use "............" if missing.
 - Use currency 'SAR' or 'Saudi Riyals' only.
-- Do NOT invent companies, employment roles (Manager), or moral damages.
-- Do NOT flip roles.
+- Saudi Labor Law is (1246H / 2005G).
 - Output format:
 1. ملخص الوقائع: [Arabic text]
 2. الأسانيد: [Arabic text]"""
                 
-                ai_output = self.llm.generate(target_prompt, system_prompt=f"أنت خبير صياغة لوائح دعوى سعودي. السياق الأنظمة: {legal_context}")
+                ai_output = await self.llm.generate(target_prompt, system_prompt=f"أنت خبير صياغة لوائح دعوى سعودي. السياق الأنظمة: {legal_context}", max_new_tokens=500)
                 ai_output = self._clean_draft(ai_output, {"amount": amount})
                 
                 # Global Currency Scrub
@@ -695,8 +752,10 @@ STRICT INSTRUCTIONS:
             except: pass
 
         final_text = self.CLAIM_TEMPLATE.format(
-            court_name="المحكمة العامة", 
+            court_name="المحكمة العمالية" if "عمالي" in case_type_ar else "المحكمة العامة", 
             case_type=case_type_ar, 
+            plaintiff=analysis.get("entities", {}).get("plaintiff") or "............",
+            defendant=analysis.get("entities", {}).get("defendant") or "............",
             facts_summary=facts_summary, 
             legal_basis=legal_basis, 
             facts_summary_en=facts_summary_en, 
@@ -725,21 +784,22 @@ STRICT INSTRUCTIONS:
         if self.llm:
             try:
                 legal_context, _ = self._get_legal_context(case_type_ar)
+                # OPTIMIZATION: Cap input
+                short_case_text = case_text[:3000]
+
                 target_prompt = f"""STRICT GROUNDING TASK:
 Draft a defense response for a '{case_type_ar}' case.
-CASE TEXT: {case_text}
+CASE CONTEXT (TRUNCATED): {short_case_text}
 ROLES: Plaintiff (Opponent), Defendant (Client).
 
 STRICT INSTRUCTIONS:
-- Use ONLY the CASE TEXT to build defenses.
+- Use ONLY the provided text to build defenses.
 - Use currency 'SAR' or 'Saudi Riyals' only.
-- Do NOT introduce fake employment narratives.
-- Do NOT refer to the client as the 'Manager' unless explicitly in text.
 - Output format:
 1. ملخص الرد: [Arabic text]
 2. الدفوع: [Arabic text]"""
                 
-                ai_output = self.llm.generate(target_prompt, system_prompt=f"أنت محامي دفاع سعودي. السياق الأنظمة: {legal_context}")
+                ai_output = await self.llm.generate(target_prompt, system_prompt=f"أنت محامي دفاع سعودي. السياق الأنظمة: {legal_context}", max_new_tokens=500)
                 ai_output = self._clean_draft(ai_output, {"amount": amount})
                 # Global Currency Scrub
                 ai_output = ai_output.replace("Rs.", "SAR").replace("rupees", "SAR").replace("Rupees", "SAR")
@@ -750,10 +810,17 @@ STRICT INSTRUCTIONS:
                     legal_basis = parts[1].replace("الدفوع:", "").strip()
             except: pass
 
-        final_text = self.DEFENSE_TEMPLATE.format(court_name="المحكمة العامة", facts_summary=facts_summary, legal_basis=legal_basis)
+        final_text = self.DEFENSE_TEMPLATE.format(
+            court_name="المحكمة العامة", 
+            plaintiff=analysis.get("entities", {}).get("plaintiff") or "............",
+            defendant=analysis.get("entities", {}).get("defendant") or "............",
+            facts_summary=facts_summary, 
+            legal_basis=legal_basis
+        )
         return {
             "text": final_text, 
             "intent": "draft_defense", 
+            "metadata": {"is_draft": True},
             "suggested_actions": [
                 {"label": "Draft Claim | لائحة دعوى", "action": "draft_claim"}, 
                 {"label": "Recommendations | التوصيات", "action": "recommendations"}
@@ -761,11 +828,23 @@ STRICT INSTRUCTIONS:
         }
 
     async def _handle_draft_enforcement(self, query: str, analysis: Dict) -> Dict[str, Any]:
-        """Generate an enforcement petition (Standardized)."""
+        """Generate an enforcement petition (Structured Grounding)."""
+        entities = analysis.get("entities", {})
         recommendation = analysis.get("recommendation", {})
-        amount = recommendation.get("award_amount", "............")
-        final_text = self.ENFORCEMENT_TEMPLATE.format(amount=amount, facts_summary="بناءً على منطوق الحكم القاضي بإلزام المنفذ ضده بدفع المبلغ المذكور.")
-        return {"text": final_text, "intent": "draft_enforcement", "suggested_actions": [{"label": "Appeal Memo | مذكرة اعتراض", "action": "draft_appeal"}]}
+        amount = entities.get("compensation_amount") or recommendation.get("award_amount") or "............"
+        
+        final_text = self.ENFORCEMENT_TEMPLATE.format(
+            plaintiff=entities.get("plaintiff") or "............",
+            defendant=entities.get("defendant") or "............",
+            amount=amount, 
+            facts_summary="بناءً على منطوق الحكم القاضي بإلزام المنفذ ضده بدفع المبلغ المذكور."
+        )
+        return {
+            "text": final_text, 
+            "intent": "draft_enforcement", 
+            "metadata": {"is_draft": True},
+            "suggested_actions": [{"label": "Appeal Memo | مذكرة اعتراض", "action": "draft_appeal"}]
+        }
 
     async def _handle_draft_appeal(self, query: str, analysis: Dict) -> Dict[str, Any]:
         """Generate an appeal memo (Standardized)."""
@@ -823,7 +902,7 @@ STRICT INSTRUCTIONS:
         """Handle general inquiries."""
         if self.llm and analysis:
             try:
-                res = self.llm.generate(f"بيانات: {json.dumps(analysis, ensure_ascii=False)}\nسؤال: {query}", system_prompt="أنت مساعد قانوني.")
+                res = await self.llm.generate(f"بيانات: {json.dumps(analysis, ensure_ascii=False)}\nسؤال: {query}", system_prompt="أنت مساعد قانوني.")
                 return {"text": res, "intent": "general_inquiry"}
             except: pass
         return {"text": "أنا هنا لمساعدتك في تحليل القضايا القانونية السعودية.", "intent": "general_inquiry"}

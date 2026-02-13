@@ -132,6 +132,10 @@ class EntityExtractor:
         elif claim_count >= 1:
             entities["doc_type"] = "claim"
         
+        # ADDITIONAL: Check for "Rulings" markers specifically in the logically expected parts
+        if "بإلزام" in clean or "حكمت المحكمة" in clean or "قررت الدائرة" in clean:
+            entities["doc_type"] = "judgement"
+        
         logger.info(f"  → Doc type detected: {entities['doc_type']} (judgement signals: {judgement_count}, claim signals: {claim_count})")
 
         # ═══════════════════════════════════════════════════════════
@@ -240,32 +244,40 @@ class EntityExtractor:
                 entities["salary"] = sm.group(1).replace(',', '') + " ريال"
                 break
 
-        # --- Compensation / Award Amount ---
+        # --- Compensation / Award Amount (Enhanced for multi-part sums) ---
+        # Logic: Find all amounts associated with keywords like 'إلزام' or 'مقداره'
+        # and sum them if multiple are found in the verdict section.
         comp_patterns = [
-            # Explicit award totals
-            r"إجمالي\s+(?:المستحقات|المبلغ|التعويض)\s*[:\s]*(\d[\d,]*(?:\.\d+)?)\s*(?:ريال|ر\.س|SAR)",
-            r"صافي\s+(?:المستحقات|التعويض)\s*[:\s]*(\d[\d,]*(?:\.\d+)?)\s*(?:ريال|ر\.س|SAR)",
-            # Court award phrasing
-            r"بمبلغ\s*(?:وقدره)?\s*(\d[\d,]*(?:\.\d+)?)\s*(?:ريال|ر\.س|SAR)",
-            r"مبلغ\s*(?:وقدره|قدره)\s*(\d[\d,]*(?:\.\d+)?)\s*(?:ريال|ر\.س|SAR)",
-            r"إلزام.*?بدفع\s+(?:مبلغ\s*(?:وقدره)?\s*)?(\d[\d,]*(?:\.\d+)?)\s*(?:ريال|ر\.س|SAR)",
-            r"إلزام.*?بسداد\s+(?:مبلغ\s+)?(\d[\d,]*(?:\.\d+)?)\s*(?:ريال|ر\.س|SAR)",
-            # Direct claim amount
-            r"(?:مطالبة|يطالب)\s+(?:بمبلغ\s+)?(\d[\d,]*(?:\.\d+)?)\s*(?:ريال|ر\.س|SAR)",
-            # General "مبلغ X ريال" (lowest priority)
-            r"مبلغ\s+(\d[\d,]*(?:\.\d+)?)\s*(?:ريال|ر\.س|SAR)",
+            # Total award phrases (highest priority)
+            r"(?:إجمالي|مجموع|صافي)\s+(?:المستحقات|المبلغ|التعويض|ما استحقته)\s*[:\s]*(\d[\d,]*(?:\.\d+)?)\s*(?:ريال|ر\.س|SAR)",
+            # Individual components to sum (e.g. 48,000 ريال)
+            r"(?:إلزام|بسداد|بدفع|مبلغ)\s*(?:وقدره|حقها|قدره)?\s*(\d[\d,]*(?:\.\d+)?)\s*(?:ريال|ر\.س|SAR)",
         ]
+        
+        all_amounts = []
         for cp in comp_patterns:
-            cm = re.search(cp, clean)
-            if cm:
-                raw_amount = cm.group(1).replace(',', '')
-                # Skip tiny amounts that are likely salary or fees, not compensation
+            for match in re.finditer(cp, clean):
+                raw = match.group(1).replace(',', '')
                 try:
-                    if float(raw_amount) >= 500:
-                        entities["compensation_amount"] = cm.group(1) + " ريال"
-                        break
-                except ValueError:
-                    pass
+                    val = float(raw)
+                    if val >= 400: # Ignore small fees
+                        all_amounts.append(val)
+                except ValueError: continue
+        
+        if all_amounts:
+            # If we found an explicit 'Total' (إجمالي), use the first one
+            total_match = re.search(r"(?:إجمالي|مجموع|صافي)\s+(?:المستحقات|المبلغ|التعويض|ما استحقته)\s*[:\s]*(\d[\d,]*(?:\.\d+)?)\s*(?:ريال|ر\.س|SAR)", clean)
+            if total_match:
+                entities["compensation_amount"] = f"{float(total_match.group(1).replace(',', '')):,.0f} ريال"
+            else:
+                # Otherwise, if multiple amounts were found in a judgment context, sum them
+                # This specifically handles [48000, 16000, 24000] patterns
+                if entities["doc_type"] == "judgement" and len(all_amounts) > 1:
+                    total_sum = sum(set(all_amounts)) # Use set to avoid double-counting overlapping regex matches
+                    entities["compensation_amount"] = f"{total_sum:,.0f} ريال"
+                else:
+                    # Single amount fallback
+                    entities["compensation_amount"] = f"{max(all_amounts):,.0f} ريال"
 
         # --- Contract Value (fallback to salary if not found) ---
         contract_patterns = [

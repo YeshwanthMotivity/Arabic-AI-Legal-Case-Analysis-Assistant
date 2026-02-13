@@ -57,14 +57,15 @@ def generate_recommendation(
     if doc_type == "judgement":
         confidence = 0.99
         direction = "decided_judgement"
-        recommendation_ar = "⚠️ تم رصد أن هذه الوثيقة هي 'حكم قضائي' بالفعل. التحليل يشير إلى ثبوت الحق للمدعي (في حال الإلزام) أو رفض الدعوى."
-        recommendation_en = "⚠️ This document is detected as an existing 'Judgement'. The recommendation reflects the legal finality of the document."
         
-        # If we have extracted compensation, mention it
-        if entities.get("compensation_amount"):
-            amount = entities.get("compensation_amount")
-            recommendation_ar += f"\nمبلغ التعويض المحكوم به: {amount}."
-            recommendation_en += f"\nAwarded compensation amount: {amount}."
+        # If we have extracted compensation, prioritize it
+        amount = entities.get("compensation_amount")
+        if amount:
+            recommendation_ar = f"⚠️ تم رصد أن هذه الوثيقة هي 'حكم قضائي' إلزامي. بناءً على المنطوق، تم الحكم للمدعي بمبلغ إجمالي قدره: {amount}."
+            recommendation_en = f"⚠️ This document is detected as an 'Enforcement Judgment'. The court has awarded the plaintiff a total amount of: {amount}."
+        else:
+            recommendation_ar = "⚠️ تم رصد أن هذه الوثيقة هي 'حكم قضائي' بالفعل. التحليل يشير إلى ثبوت الحق للمدعي (في حال الإلزام) أو رفض الدعوى."
+            recommendation_en = "⚠️ This document is detected as an existing 'Judgement'. The recommendation reflects the legal finality of the document."
         
         return {
             "recommendation_ar": recommendation_ar,

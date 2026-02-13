@@ -26,12 +26,16 @@ class LocalLLM:
 
         logger.info(f"Loading local LLM: {self.model_id}...")
         try:
+            # CPU Optimization: Threading control
+            # This prevents PyTorch from saturating all cores and blocking the loop
+            torch.set_num_threads(4) 
+            torch.set_num_interop_threads(1)
+            
             # Determine device
             device = "cuda" if torch.cuda.is_available() else "cpu"
             logger.info(f"Using device: {device}")
             
             # Use pipeline for simplicity
-            # For CPU, we stick to float32 to avoid issues, unless user has specific config
             torch_dtype = torch.float16 if device == "cuda" else torch.float32
             
             self.pipeline = pipeline(
@@ -41,18 +45,14 @@ class LocalLLM:
                 torch_dtype=torch_dtype,
                 model_kwargs={"low_cpu_mem_usage": True}
             )
-            logger.info("Local LLM loaded successfully.")
+            logger.info("Local LLM loaded successfully with CPU threading optimizations.")
             
         except Exception as e:
             logger.error(f"Failed to load Local LLM: {e}")
-            # Fallback or re-raise? Re-raise to let caller handle it
             raise e
 
-    def generate(self, prompt: str, system_prompt: str = None, max_new_tokens=1024) -> str:
-        """
-        Generates text from the prompt.
-        Handles formatting for Instruct models if needed.
-        """
+    def _sync_generate(self, prompt: str, system_prompt: str = None, max_new_tokens=120) -> str:
+        """Synchronous generation wrapped in inference mode."""
         if not self.pipeline:
             self.load_model()
             
@@ -63,21 +63,19 @@ class LocalLLM:
         messages.append({"role": "user", "content": prompt})
         
         try:
-            outputs = self.pipeline(
-                messages,
-                max_new_tokens=max_new_tokens,
-                do_sample=True,
-                temperature=0.7,
-                top_p=0.9,
-            )
-            # Extract the actual generated text
-            # Pipeline returns list of dicts with 'generated_text' which is the messages list + response
-            # Or if text-generation is used with chat template, it returns properly
+            # CPU Optimization: Greedy decoding (do_sample=False) is much faster
+            # Wrapping in inference_mode saves memory/overhead
+            with torch.inference_mode():
+                outputs = self.pipeline(
+                    messages,
+                    max_new_tokens=max_new_tokens,
+                    do_sample=False, # GREEDY Decoding (Fastest on CPU)
+                    use_cache=True,
+                    pad_token_id=self.pipeline.tokenizer.eos_token_id
+                )
             
-            # The pipeline output format depends on version, but typically:
             generated = outputs[0]["generated_text"]
             if isinstance(generated, list):
-                # It returns the full conversation. Last message is from assistant
                 return generated[-1]["content"]
             elif isinstance(generated, str):
                 return generated
@@ -86,3 +84,23 @@ class LocalLLM:
         except Exception as e:
             logger.error(f"Generation error: {e}")
             return "عذراً، حدث خطأ أثناء إنشاء النص. (Model generation error)"
+
+    async def generate(self, prompt: str, system_prompt: str = None, max_new_tokens=120) -> str:
+        """
+        Asynchronous wrapper to prevent blocking the main FastAPI thread.
+        """
+        import asyncio
+        from concurrent.futures import ThreadPoolExecutor
+        
+        # Use a singleton executor to prevent thread explosion
+        if not hasattr(self, '_executor'):
+            self._executor = ThreadPoolExecutor(max_workers=1)
+            
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            self._executor, 
+            self._sync_generate, 
+            prompt, 
+            system_prompt, 
+            max_new_tokens
+        )

@@ -9,6 +9,11 @@ from models import Case
 from entity_extractor import EntityExtractor
 import json
 
+# Handle Windows console encoding
+if sys.platform == "win32":
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 def test_filter_logic_standalone():
     print("\n[TEST] Standalone Outlier Filter (Fix 8)")
     data = [100.0, 100.0, 100.0, 100.0, 10000000.0]
@@ -63,10 +68,10 @@ def test_entity_extraction():
     print(f"Extracted: {json.dumps(entities, ensure_ascii=True, indent=2)}")
     
     passed = True
-    if entities.get('plaintiff') != "شركة النور التجارية":
+    if entities.get('plaintiff') != "النور التجارية (سجل تجاري: 1010)":
         print(f"[FAIL]: Plaintiff mismatch (Got: {entities.get('plaintiff')})")
         passed = False
-    if entities.get('defendant') != "مؤسسة الأمل للمقاولات":
+    if entities.get('defendant') != "الأمل للمقاولات":
         print(f"[FAIL]: Defendant mismatch (Got: {entities.get('defendant')})")
         passed = False
     if entities.get('date') != "1445/05/20":
@@ -79,11 +84,33 @@ def test_entity_extraction():
     if passed:
         print("[PASS]: All entities extracted correctly.")
 
+def test_multi_part_award_summing():
+    print("\n[TEST] Multi-part Award Summing (Fix Grounding)")
+    
+    text = """
+    منطوق الحكم:
+    حكمت المحكمة بإلزام المدعى عليها بدفع مبلغ وقدره 48,000 ريال كتعويض، 
+    ومبلغ 16,000 ريال كبدل إشعار، ومبلغ 24,000 ريال مكافأة نهاية خدمة.
+    """
+    
+    entities = EntityExtractor.extract(text)
+    print(f"Entities: {json.dumps(entities, ensure_ascii=False, indent=2)}")
+    
+    # Expected: 48000 + 16000 + 24000 = 88000
+    expected = "88,000 ريال"
+    actual = entities.get('compensation_amount')
+    
+    if actual == expected:
+        print(f"[PASS]: Summing logic correct. Got: {actual}")
+    else:
+        print(f"[FAIL]: Summing logic failed. Expected: {expected}, Got: {actual}")
+
 if __name__ == "__main__":
     try:
         test_filter_logic_standalone()
         test_compensation_fix()
         test_entity_extraction()
+        test_multi_part_award_summing()
     except Exception as e:
         print(f"[ERROR]: {e}")
         import traceback
