@@ -33,7 +33,28 @@ function App() {
   // Conversation management
   const [conversations, setConversations] = useState(() => {
     const saved = localStorage.getItem('conversations');
-    return saved ? JSON.parse(saved) : [];
+    let loaded = saved ? JSON.parse(saved) : [];
+
+    // Migration: Sanitize history by replacing old 'case_summary' actions immediately
+    if (loaded.length > 0) {
+      loaded = loaded.map(conv => ({
+        ...conv,
+        messages: conv.messages ? conv.messages.map(msg => {
+          if (msg.suggested_actions) {
+            return {
+              ...msg,
+              suggested_actions: msg.suggested_actions.map(action =>
+                action.action === "case_summary"
+                  ? { label: "Paste Text | لصق نص", action: "paste_text" }
+                  : action
+              )
+            };
+          }
+          return msg;
+        }) : []
+      }));
+    }
+    return loaded;
   });
   const [currentConversationId, setCurrentConversationId] = useState(null);
 
@@ -45,6 +66,8 @@ function App() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+
 
   // Check health on mount
   useEffect(() => {
@@ -135,7 +158,7 @@ function App() {
         null,
         [
           { label: "Upload Case | رفع قضية", action: "upload" },
-          { label: "Case Summary | ملخص القضية", action: "case_summary" }
+          { label: "Paste Text | لصق نص", action: "paste_text" }
         ]
       );
     }, 500);
@@ -310,7 +333,7 @@ function App() {
       null,
       [
         { label: "Upload Case | رفع قضية", action: "upload" },
-        { label: "Ask Question | اسأل سؤال", action: "ask_question" }
+        { label: "Paste Text | لصق نص", action: "paste_text" }
       ]
     );
   };
@@ -453,7 +476,7 @@ function App() {
         <div className="chat-messages-container">
           {messages.length === 0 ? (
             <div className="chat-empty-state">
-              <div className="chat-empty-icon">⚖️</div>
+              <div className="chat-empty-icon"></div>
               <h2 className="chat-empty-title">
                 أهلاً بك في المساعد القانوني
               </h2>
@@ -478,7 +501,7 @@ function App() {
           {/* Loading State */}
           {loading && (
             <div className="chat-loading-wrapper">
-              <div className="chat-loading-icon">⚖️</div>
+              <div className="chat-loading-icon"></div>
               <div className="thinking-text">
                 <ThinkingIndicator message="جاري معالجة طلبك..." />
                 <div className="en-tiny">Processing your request...</div>

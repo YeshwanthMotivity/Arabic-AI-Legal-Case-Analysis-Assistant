@@ -330,7 +330,7 @@ export const Message = ({
   return (
     <div className={`message ${message.role}`}>
       <div className="message-avatar">
-        {message.role === 'user' ? '👤' : '⚖️'}
+        {message.role === 'user' ? 'U' : 'L'}
       </div>
 
       <div style={{ flex: 1 }}>

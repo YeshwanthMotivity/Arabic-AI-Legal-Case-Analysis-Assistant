@@ -18,7 +18,7 @@ export function ToolsPanel({
     <aside className="app-tools">
       {/* Header */}
       <div className="tools-header">
-        <span className="tools-header-icon">🛠️</span>
+        <span className="tools-header-icon"></span>
         <div className="header-text-stack">
           <span>الأدوات والسياق</span>
           <span className="en-tiny">Tools & Context</span>

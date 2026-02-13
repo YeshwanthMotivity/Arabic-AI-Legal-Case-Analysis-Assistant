@@ -29,7 +29,7 @@ export function Header({
     <header className="app-header">
       {/* Logo Section */}
       <div className="header-logo">
-        <div className="header-logo-icon">⚖️</div>
+        <div className="header-logo-icon"></div>
         <div className="header-logo-text">
           <h1>مساعد القانون | Legal AI</h1>
           <p>أداة تحليل القضايا القانونية</p>

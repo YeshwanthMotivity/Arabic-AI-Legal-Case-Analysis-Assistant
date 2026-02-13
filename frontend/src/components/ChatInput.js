@@ -19,14 +19,14 @@ export function ChatInput({
   const fileInputRef = useRef(null);
 
   const commands = [
-    { name: '/summarize', label: 'تلخيص القضية', icon: '📋' },
-    { name: '/analyze', label: 'تحليل تفصيلي', icon: '🔍' },
-    { name: '/compare', label: 'مقارنة القضايا', icon: '⚖️' },
-    { name: '/extract', label: 'استخراج الكيانات', icon: '📝' },
-    { name: '/evidence', label: 'تحليل الأدلة', icon: '🔎' },
-    { name: '/draft', label: 'صياغة المذكرة', icon: '✏️' },
-    { name: '/precedent', label: 'البحث عن السوابق', icon: '📚' },
-    { name: '/clear', label: 'مسح المحادثة', icon: '🗑️' }
+    { name: '/summarize', label: 'تلخيص القضية', icon: '' },
+    { name: '/analyze', label: 'تحليل تفصيلي', icon: '' },
+    { name: '/compare', label: 'مقارنة القضايا', icon: '' },
+    { name: '/extract', label: 'استخراج الكيانات', icon: '' },
+    { name: '/evidence', label: 'تحليل الأدلة', icon: '' },
+    { name: '/draft', label: 'صياغة المذكرة', icon: '' },
+    { name: '/precedent', label: 'البحث عن السوابق', icon: '' },
+    { name: '/clear', label: 'مسح المحادثة', icon: '' }
   ];
 
   // Auto-expand textarea
@@ -75,10 +75,12 @@ export function ChatInput({
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+    // Enter sends the message
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
+    // Shift+Enter adds a new line (default textarea behavior)
   };
 
   const charCount = text.length;
@@ -176,7 +178,7 @@ export function ChatInput({
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={disabled}
-          placeholder="اكتب سؤالك هنا... (Ctrl+Enter للإرسال) | Ask your question... (Ctrl+Enter to send)"
+          placeholder="اكتب سؤالك هنا... (Enter للإرسال، Shift+Enter لسطر جديد) | Ask your question... (Enter to send, Shift+Enter for new line)"
           className="chat-message-input"
         />
 
@@ -185,7 +187,7 @@ export function ChatInput({
           onClick={handleSend}
           disabled={disabled || !text.trim()}
           className={`chat-input-send ${disabled || !text.trim() ? 'disabled' : ''}`}
-          title="إرسال | Send (Ctrl+Enter)"
+          title="إرسال | Send (Enter)"
         >
           <Send size={20} />
         </button>

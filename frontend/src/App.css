@@ -28,20 +28,14 @@
 
   /* ---- COLORS: Light Mode Defaults ---- */
   /* ---- COLORS: Premium Light (Emerald/Teal) ---- */
-  /* Primary Brand - Emerald/Teal */
-  --color-primary: #059669;
-  /* Emerald 600 */
-  --color-primary-dark: #047857;
-  /* Emerald 700 */
-  --color-primary-darker: #064e3b;
-  /* Emerald 900 */
-  --color-primary-light: #34d399;
-  /* Emerald 400 */
-  --color-primary-lighter: #6ee7b7;
-  /* Emerald 300 */
-  --color-primary-pale: #ecfdf5;
-  /* Emerald 50 - Backgrounds */
-  --color-primary-faint: #f0fdf4;
+  /* Primary Brand - Modern Teal */
+  --color-primary: #0d9488;
+  --color-primary-dark: #0f766e;
+  --color-primary-darker: #115e59;
+  --color-primary-light: #2dd4bf;
+  --color-primary-lighter: #5eead4;
+  --color-primary-pale: #f0fdfa;
+  --color-primary-faint: #ccfbf1;
   /* Emerald 50 - More subtle */
 
   /* Accent - Gold/Amber (Premium Feel) */
@@ -70,17 +64,14 @@
   --color-gray-800: #1e293b;
   --color-gray-900: #0f172a;
 
-  /* UI Backgrounds - Premium Light */
+  /* UI Backgrounds - Clean & Modern */
   --color-bg-app: #f8fafc;
-  /* Subtle Gradient: White to Faint Mint */
-  --gradient-bg-app: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
-  --pattern-bg-app: radial-gradient(#cbd5e1 0.7px, transparent 0.7px);
+  --gradient-bg-app: linear-gradient(135deg, #f8fafc 0%, #f0fdfa 100%);
+  --pattern-bg-app: radial-gradient(#cbd5e1 0.5px, transparent 0.5px);
 
-  --color-bg-primary: rgba(255, 255, 255, 0.85);
-  /* Glassy Base */
-  --color-bg-secondary: rgba(248, 250, 252, 0.6);
-  /* Glassy Secondary */
-  --color-bg-tertiary: #ffffff;
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f1f5f9;
+  --color-bg-tertiary: #e2e8f0;
 
   /* Glassmorphism Tokens */
   --glass-border: 1px solid rgba(255, 255, 255, 0.6);
@@ -174,19 +165,19 @@
    DARK THEME OVERRIDES
    =================================== */
 [data-theme='dark'] {
-  /* ---- COLORS: Premium Dark (Emerald/Teal) ---- */
-  --color-primary: #10b981;
-  /* Emerald 500 (Brighter for Dark) */
-  --color-primary-dark: #059669;
-  /* Emerald 600 */
-  --color-primary-darker: #047857;
-  /* Emerald 700 */
-  --color-primary-light: #34d399;
-  /* Emerald 400 */
-  --color-primary-lighter: #6ee7b7;
-  /* Emerald 300 */
-  --color-primary-pale: rgba(16, 185, 129, 0.1);
-  --color-primary-faint: rgba(16, 185, 129, 0.05);
+  /* ---- COLORS: Modern Teal Dark ---- */
+  --color-primary: #2dd4bf;
+  /* Teal 400 - Bright for Dark Mode */
+  --color-primary-dark: #14b8a6;
+  /* Teal 500 */
+  --color-primary-darker: #0d9488;
+  /* Teal 600 */
+  --color-primary-light: #5eead4;
+  /* Teal 300 */
+  --color-primary-lighter: #99f6e4;
+  /* Teal 200 */
+  --color-primary-pale: rgba(45, 212, 191, 0.1);
+  --color-primary-faint: rgba(45, 212, 191, 0.05);
 
   /* Accent - Amber/Gold */
   --color-accent: #fbbf24;

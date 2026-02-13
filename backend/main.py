@@ -86,13 +86,13 @@ async def startup_event():
         chat_engine.set_analyzer(execute_full_analysis)
         
         logger.info("✅ System ready. All engines loaded successfully.")
-        logger.info("   🔍 Similarity Engine: READY")
+        logger.info("   Similarity Engine: READY")
         logger.info("   📝 Summarizer Engine: READY")
         logger.info("   💬 Chat Engine: READY")
         logger.info("   🏷️ Classification Engine: READY")
         logger.info("   ⚖️ Legal Principles Engine: READY")
         logger.info("   📊 Trend Analyzer: READY")
-        logger.info("   💡 Recommendation Engine: READY")
+        logger.info("   Recommendation Engine: READY")
     except Exception as e:
         logger.error(f"CRITICAL STARTUP ERROR: {e}", exc_info=True)
 

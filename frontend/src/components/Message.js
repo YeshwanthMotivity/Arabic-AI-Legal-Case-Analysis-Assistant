@@ -148,11 +148,11 @@ export function Message({
             <button
               className="action-button"
               onClick={handleCopy}
-              title={copied ? '✓ تم النسخ | Copied' : 'نسخ | Copy'}
+              title={copied ? 'تم النسخ | Copied' : 'نسخ | Copy'}
             >
               <Copy size={12} className="btn-icon-spacing" />
               <div className="btn-text-stack">
-                <span>{copied ? '✓ تم النسخ' : 'نسخ'}</span>
+                <span>{copied ? 'تم النسخ' : 'نسخ'}</span>
                 <span className="en-tiny">{copied ? 'Copied' : 'Copy'}</span>
               </div>
             </button>
