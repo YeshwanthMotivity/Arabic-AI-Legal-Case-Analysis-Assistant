@@ -1,0 +1,31 @@
+# Python cache
+backend/__pycache__/
+backend/*.pyc
+backend/*.pyo
+backend/*.pyd
+backend/.pytest_cache/
+
+# Secrets - never bake into image
+backend/.env
+
+# Git & docs
+.git/
+.gitignore
+docs/
+README.md
+
+# Test/debug files
+backend/test_*.py
+backend/debug_*.py
+
+# Local runtime artifacts (not needed in image)
+backend/conversations_archive.json
+backend/*.db
+
+# Frontend (not needed for backend image)
+frontend/
+
+# NOTE: data/ is intentionally NOT excluded here.
+# The dataset (data/saudi_general_court_judgments.json) must be copied into the image.
+# Only the SQLite DB (data/chat_history.db) is excluded as it is persisted via a Docker volume.
+data/*.db

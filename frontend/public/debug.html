@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Connection Diagnostic</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>API Connection Test</h1>
+    <button onclick="check(5000)">Check Port 5000 (New Backend)</button>
+    <button onclick="check(8000)">Check Port 8000 (Old Backend)</button>
+    <div id="results"></div>
+
+    <script>
+        // Check both on load
+        window.onload = function () {
+            check(5000);
+            setTimeout(() => check(8000), 1000);
+        };
+
+        async function check(port) {
+            const resultDiv = document.getElementById('results');
+            resultDiv.innerHTML = "Checking...";
+
+            const url = `http://127.0.0.1:${port}/health`;
+            try {
+                const start = Date.now();
+                const response = await fetch(url);
+                const data = await response.json();
+                const time = Date.now() - start;
+
+                resultDiv.innerHTML += `
+                    <div class="status success">
+                        <strong> Success!</strong><br>
+                        URL: ${url}<br>
+                        Status: ${response.status}<br>
+                        Response: ${JSON.stringify(data)}<br>
+                        Time: ${time}ms
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML += `
+                    <div class="status error">
+                        <strong> Failed!</strong><br>
+                        URL: ${url}<br>
+                        Error: ${error.message}<br>
+                        <small>Check Console (F12) for more details.</small>
+                    </div>
+                `;
+            }
+        }
+
+        // Auto check on load
+        check(8000);
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,30 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: legal-assistant-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=5000
+      - CORS_ORIGINS=http://localhost,http://localhost:3000
+      - LLM_NUM_THREADS=4
+      # SQLite DB lives in /app/db (separate from /app/data which holds the dataset)
+      - DB_PATH=/app/db/chat_history.db
+    volumes:
+      # Persist SQLite DB in /app/db — does NOT shadow /app/data (dataset lives there)
+      - backend_db:/app/db
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 4G
+
+volumes:
+  backend_db:
+
+
