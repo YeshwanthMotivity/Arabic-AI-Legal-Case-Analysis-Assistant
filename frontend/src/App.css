@@ -424,6 +424,7 @@ select {
 }
 
 [data-theme='dark'] .app-header {
+  background: var(--color-bg-secondary);
   border-bottom-color: transparent;
 }
 
@@ -449,8 +450,10 @@ select {
 }
 
 [data-theme='dark'] .app-sidebar {
+  background: var(--color-bg-secondary);
   border-left-color: transparent;
 }
+
 
 .app-main {
   grid-area: main;

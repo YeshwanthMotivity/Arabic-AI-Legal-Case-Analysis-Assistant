@@ -142,7 +142,17 @@ function App() {
   const [panels, setPanels] = useState({ sidebar: true, tools: true, insights: false });
 
   const togglePanel = (panelName) => {
-    setPanels(prev => ({ ...prev, [panelName]: !prev[panelName] }));
+    setPanels(prev => {
+      const newState = { ...prev, [panelName]: !prev[panelName] };
+      // Mutual exclusivity for right panels
+      if (panelName === 'insights' && newState.insights) {
+        newState.tools = false;
+      }
+      if (panelName === 'tools' && newState.tools) {
+        newState.insights = false;
+      }
+      return newState;
+    });
   };
 
   // Settings State
@@ -703,10 +713,10 @@ function App() {
       case 'compensation':
       case 'entities':
         // Send the action string directly to trigger exact intent matching
-        sendChatMessage(normalizedAction, localizedLabel, parentMsgId);
+        sendChatMessage(normalizedAction, localizedLabel, null);
         break;
       default:
-        sendChatMessage(normalizedAction || label || '', localizedLabel, parentMsgId);
+        sendChatMessage(normalizedAction || label || '', localizedLabel, null);
         break;
     }
   };

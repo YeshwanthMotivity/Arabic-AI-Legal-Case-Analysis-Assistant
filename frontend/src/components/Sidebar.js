@@ -97,7 +97,7 @@ export function Sidebar({
                 const rect = e.currentTarget.getBoundingClientRect();
                 setHoverPos({
                   top: rect.top + (rect.height / 2),
-                  right: window.innerWidth - rect.left + 10
+                  left: rect.right + 10
                 });
                 setHoveredConvId(conv.id);
               }}
@@ -221,7 +221,7 @@ export function Sidebar({
               className="conversation-tooltip fixed-tooltip"
               style={{
                 top: hoverPos.top,
-                right: hoverPos.right
+                left: hoverPos.left
               }}
             >
               {conv.summary ? (
