@@ -20,17 +20,8 @@ const getLocalizedActionLabel = (label, action, language) => {
 
 const getPreferredMessageText = (message, language) => {
   const content = (message.content || '').toString();
-  const translation = (message.translation || '').toString();
-  if (!translation) return content;
-
-  if (language === 'ar') {
-    if (hasArabic(content)) return content;
-    if (hasArabic(translation)) return translation;
-    return content;
-  }
-
-  if (!hasArabic(content)) return content;
-  if (translation && !hasArabic(translation)) return translation;
+  // Since the backend handles translations internally now, we strictly render the current content block.
+  // The translation field might hold outdated text if we appended a new action response to content.
   return content;
 };
 
