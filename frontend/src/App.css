@@ -194,31 +194,31 @@
   /* Amber 400 */
 
   /* Neutral Colors (Inverted) - True Premium Black/Green */
-  --color-white: #06110D;
+  --color-white: #0a1411;
   /* Deepest Emerald Dark */
 
   /* UI Backgrounds - Deep & Atmospheric */
-  --color-bg-app: #06110D;
+  --color-bg-app: #030a08;
   /* Deep Radial Gradient with subtle emerald glow */
-  --gradient-bg-app: radial-gradient(circle at top right, #133D2D 0%, #06110D 70%);
-  --pattern-bg-app: radial-gradient(rgba(16, 185, 129, 0.05) 0.8px, transparent 0.8px);
+  --gradient-bg-app: radial-gradient(circle at top right, #0a1f17 0%, #030a08 70%);
+  --pattern-bg-app: radial-gradient(rgba(16, 185, 129, 0.08) 0.8px, transparent 0.8px);
 
-  --color-bg-primary: rgba(10, 28, 21, 0.8);
-  /* Corresponds to #0A1C15 */
-  --color-bg-secondary: rgba(19, 61, 45, 0.5);
-  /* Corresponds to #133D2D */
-  --color-bg-tertiary: #133D2D;
+  --color-bg-primary: rgba(15, 30, 25, 0.95);
+  /* Darker opaque cards */
+  --color-bg-secondary: rgba(10, 20, 15, 0.8);
+  /* Darker sidebars */
+  --color-bg-tertiary: #08120e;
 
   /* Glassmorphism Tokens - Stronger for Dark */
-  --glass-border: 1px solid rgba(16, 185, 129, 0.15);
-  --glass-backdrop: blur(12px);
-  --glass-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  --glass-border: 1px solid rgba(16, 185, 129, 0.25);
+  --glass-backdrop: blur(16px);
+  --glass-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
 
   /* Text Colors - Optimized Contrast */
-  --color-text-primary: #f8fafc;
-  --color-text-secondary: #a7f3d0;
-  --color-text-tertiary: #6ee7b7;
-  --color-text-inverse: #06110D;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #d1fae5;
+  --color-text-tertiary: #a7f3d0;
+  --color-text-inverse: #030a08;
 }
 
 /* ===================================
@@ -2438,7 +2438,7 @@ textarea:focus-visible,
 .sidebar-search-input {
   width: 100%;
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-gray-200);
+  border: 1px solid var(--glass-border);
   background: var(--color-bg-tertiary);
   color: var(--color-text-primary);
   border-radius: var(--radius-md);
@@ -2480,7 +2480,7 @@ textarea:focus-visible,
   background: transparent;
   cursor: pointer;
   transition: all var(--duration-fast) var(--timing-smooth);
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
   border: 1px solid transparent;
   position: relative;
 }
@@ -2492,8 +2492,8 @@ textarea:focus-visible,
 
 .conversation-item.active {
   background: var(--color-primary-faint);
-  border-color: var(--color-primary-light);
-  color: var(--color-primary-dark);
+  border-color: var(--glass-border);
+  color: var(--color-primary);
 }
 
 .conversation-item.active .conversation-icon {
@@ -2517,7 +2517,7 @@ textarea:focus-visible,
 
 .conversation-preview {
   font-size: var(--font-size-xs);
-  color: var(--color-text-tertiary);
+  color: var(--color-text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2525,7 +2525,7 @@ textarea:focus-visible,
 
 .conversation-time {
   font-size: 10px;
-  color: var(--color-text-tertiary);
+  color: var(--color-text-secondary);
   margin-top: 4px;
   text-align: left;
 }
