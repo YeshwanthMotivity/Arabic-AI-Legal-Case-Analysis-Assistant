@@ -1,4 +1,4 @@
-import { Languages, Settings, Activity } from 'lucide-react';
+import { Languages, Settings, Activity, FileText } from 'lucide-react';
 
 /**
  * Header Component
@@ -11,6 +11,8 @@ export function Header({
   insightsVisible,
   language = 'ar',
   onToggleLanguage,
+  onBenchMemo,
+  analysis,
   text
 }) {
   const getStatusInfo = () => {
@@ -53,6 +55,18 @@ export function Header({
           aria-label="Toggle Insights"
         >
           <Activity size={18} style={{ color: insightsVisible ? 'var(--color-primary)' : 'inherit' }} />
+        </button>
+
+        <button
+          className="btn-icon btn-icon-white bench-memo-btn"
+          onClick={onBenchMemo}
+          title={language === 'ar' ? 'إنشاء مذكرة تحضيرية للقاضي' : 'Generate Judicial Bench Memo'}
+          aria-label="Bench Memo"
+          disabled={!analysis}
+          style={{ opacity: !analysis ? 0.4 : 1, cursor: !analysis ? 'not-allowed' : 'pointer' }}
+        >
+          <FileText size={18} />
+          <span className="language-toggle-label">{language === 'ar' ? 'مذكرة القاضي' : 'Bench Memo'}</span>
         </button>
 
         <button

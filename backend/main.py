@@ -319,6 +319,48 @@ async def execute_full_analysis(text: str, top_k: int = 5) -> AnalyzeResponse:
         reliability=recommendation_raw["reliability"]
     )
     
+    # Phase 2 Computations: Judicial Intelligence
+    win_rate = trends.plaintiff_win_rate
+    
+    # Appeal Risk
+    appeal_risk = "Low"
+    if win_rate < 40:
+        appeal_risk = "High"
+    elif win_rate < 70:
+        appeal_risk = "Medium"
+        
+    # Case Strength
+    case_strength = "Strong"
+    if win_rate < 40:
+        case_strength = "Weak"
+    elif win_rate < 70:
+        case_strength = "Moderate"
+        
+    # Contradictions Analyzer
+    contradictions = []
+    # If the claimed amount is unusually high compared to averages
+    if entities.get('compensation_amount') and trends.average_compensation > 0:
+        import re
+        try:
+            claimed_str = re.sub(r'[^\d.]', '', str(entities['compensation_amount']))
+            if claimed_str:
+                claimed_amt = float(claimed_str)
+                if claimed_amt > trends.average_compensation * 2.5:
+                    contradictions.append(f"المبلغ المطالب به ({claimed_amt:,.0f} ريال) أعلى بكثير من متوسط التعويض المعتاد ({trends.average_compensation:,.0f} ريال).")
+        except:
+            pass
+            
+    # If type is labor but no salary extracted
+    dispute_type = entities.get('dispute_type', '')
+    if dispute_type == 'عمالي' and not entities.get('salary'):
+        contradictions.append("لم يتم العثور على توثيق للراتب الأساسي رغم تصنيف النزاع كنزاع عمالي.")
+        
+    if not contradictions:
+        if related_cases_list:
+            contradictions.append("تتطابق وقائع القضية بشكل متسق مع السوابق القضائية دون تناقضات جوهرية.")
+        else:
+            contradictions.append("لم يتم رصد تناقضات جوهرية في النص المرفق.")
+
     return AnalyzeResponse(
         classification=classification,
         legal_principles=principles,
@@ -326,7 +368,10 @@ async def execute_full_analysis(text: str, top_k: int = 5) -> AnalyzeResponse:
         recommendation=recommendation,
         entities=entities,
         text=text,
-        related_cases=related_cases_list
+        related_cases=related_cases_list,
+        case_strength=case_strength,
+        appeal_risk=appeal_risk,
+        contradictions=contradictions
     )
 
 @app.post("/analyze", response_model=AnalyzeResponse)

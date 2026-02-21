@@ -712,11 +712,13 @@ function App() {
       case 'outcome':
       case 'compensation':
       case 'entities':
-        // Send the action string directly to trigger exact intent matching
-        sendChatMessage(normalizedAction, localizedLabel, null);
+      case 'bench_memo':
+        // Send the action string directly to trigger exact intent matching 
+        // passing parentMsgId so it appends to the current message bubble.
+        sendChatMessage(normalizedAction, localizedLabel, parentMsgId);
         break;
       default:
-        sendChatMessage(normalizedAction || label || '', localizedLabel, null);
+        sendChatMessage(normalizedAction || label || '', localizedLabel, parentMsgId);
         break;
     }
   };
@@ -758,6 +760,8 @@ function App() {
         insightsVisible={panels.insights}
         language={language}
         onToggleLanguage={() => setLanguage(prev => (prev === 'ar' ? 'en' : 'ar'))}
+        onBenchMemo={() => handleSuggestedAction('bench_memo', language === 'ar' ? 'مذكرة القاضي' : 'Bench Memo', null)}
+        analysis={analysis}
         text={uiText}
       />
 

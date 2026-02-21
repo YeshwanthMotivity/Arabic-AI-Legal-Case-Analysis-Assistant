@@ -29,7 +29,7 @@ class LegalResearchEngine:
                 self.index = None
                 self.metadata = []
         else:
-            print(f"️ Warning: Legal Research Engine index not found at {self.model_dir}")
+            print(f"Warning: Legal Research Engine index not found at {self.model_dir}")
             self.index = None
             self.metadata = []
 

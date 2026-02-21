@@ -139,7 +139,8 @@ class ChatEngine:
             "draft_enforcement": ["draft_enforcement", "enforcement draft", "enforcement petition"],
             "outcome": ["النتيجة", "outcome", "result", "probability", "احتمالية"],
             "compensation": ["تعويض", "compensation", "damages", "amount", "مبلغ"],
-            "entities": ["الأطراف", "parties", "entities", "من", "شخصيات"]
+            "entities": ["الأطراف", "parties", "entities", "من", "شخصيات"],
+            "bench_memo": ["bench memo", "مذكرة القاضي", "قاضي", "مذكرة", "bench_memo"]
         }
 
     def _get_legal_context(self, query: str) -> Tuple[str, List[Dict[str, Any]]]:
@@ -226,6 +227,8 @@ class ChatEngine:
             return "draft_appeal"
         if query_lower in {"draft enforcement", "enforcement petition", "enforcement draft"}:
             return "draft_enforcement"
+        if query_lower in {"bench_memo", "bench memo"}:
+            return "bench_memo"
         
         # 1. Check for EXACT action matches first (highest priority)
         for intent in self.intent_keywords.keys():
@@ -361,6 +364,10 @@ class ChatEngine:
 
             if not is_new_case_input:
                 response_cache.set(cache_key, response)
+
+            # --- PHASE 3: Feature Injection (Clickable Laws) ---
+            if "text" in response:
+                response["text"] = self._link_law_citations(response["text"])
 
             return response
             
@@ -888,6 +895,136 @@ How can I help you today?""",
             "citations": self._format_case_citations(related_cases),
         }
 
+    async def _handle_bench_memo(self, query: str, analysis: Dict) -> Dict[str, Any]:
+        """Generate a Judicial Bench Memo combining key analysis metrics."""
+        clf = analysis.get("classification", {})
+        principles = analysis.get("legal_principles", [])
+        recommendation = analysis.get("recommendation", {})
+        trends = analysis.get("trends", {})
+        case_strength = analysis.get("case_strength", "غير محدد")
+        appeal_risk = analysis.get("appeal_risk", "غير محدد")
+        contradictions = analysis.get("contradictions", [])
+        
+        ar_text = f"""### مذكرة تحضيرية للقاضي (Bench Memo)
+
+**التصنيف:** {clf.get('name_ar', 'غير محدد')}
+**قوة موقف الدعوى:** {case_strength}
+**خطر الاستئناف/النقض:** {appeal_risk}
+
+#### 1) الموقف القانوني والاحتماليات
+- **نسبة فوز المدعي:** {trends.get('plaintiff_win_rate', 0)}% (بناءً على {trends.get('sample_size', 0)} سوابق)
+- **متوسط التعويض في السوابق:** {trends.get('average_compensation', 0)} ريال.
+
+#### 2) المبادئ القانونية والنظامية المفتاحية\n"""
+        for p in principles[:3]:
+            # Inject URL if exists
+            p_name = f"[{p.get('name_ar')}]({p.get('url')})" if p.get('url') else p.get('name_ar')
+            ar_text += f"- **{p_name}**: {p.get('description_ar')}\n"
+        if not principles:
+            ar_text += "- لم يتم استخراج مبادئ صريحة.\n"
+            
+        ar_text += "\n#### 3) التناقضات أو الملاحظات الجوهرية (Contradictions)\n"
+        for c in contradictions:
+            ar_text += f"- {c}\n"
+            
+        ar_text += f"\n#### 4) الرأي المقترح (Recommendation)\n{recommendation.get('recommendation_ar', 'لا توجد توصية.')}"
+
+        en_text = f"""### Judicial Bench Memo
+
+**Classification:** {clf.get('name_en', 'Unspecified')}
+**Case Strength:** {case_strength}
+**Appeal Risk:** {appeal_risk}
+
+#### 1) Legal Position & Probabilities
+- **Plaintiff Win Rate:** {trends.get('plaintiff_win_rate', 0)}% (Based on {trends.get('sample_size', 0)} precedents)
+- **Historical Average Compensation:** {trends.get('average_compensation', 0)} SAR.
+
+#### 2) Key Statutory Principles\n"""
+        for p in principles[:3]:
+            p_name = f"[{p.get('name_en')}]({p.get('url')})" if p.get('url') else p.get('name_en')
+            en_text += f"- **{p_name}**\n"
+        if not principles:
+            en_text += "- No explicit principles extracted.\n"
+            
+        en_text += "\n#### 3) Material Contradictions & Notes\n"
+        for c in contradictions:
+             en_text += f"- {c}\n"
+             
+        en_text += f"\n#### 4) Suggested Opinion\n{recommendation.get('recommendation_en', 'No recommendation.')}"
+
+        final_text = ar_text if analysis.get("language", "ar") == "ar" else en_text
+        return {
+            "text": final_text.strip(),
+            "intent": "bench_memo",
+            "suggested_actions": [
+                {"label": "Full Analysis | تحليل شامل", "action": "full_analysis"},
+                {"label": "Similar Cases | قضايا مشابهة", "action": "similar_cases"}
+            ],
+            "citations": self._format_case_citations(analysis.get("related_cases", []))
+        }
+
+    async def _handle_bench_memo(self, query: str, analysis: Dict) -> Dict[str, Any]:
+        """Aggregate all Phase 2 metrics into a unified Judges Bench Memo."""
+        clf = analysis.get("classification", {})
+        case_type_ar = clf.get("name_ar", "غير محدد")
+        case_type_en = clf.get("name_en", "Unknown")
+        
+        case_strength = analysis.get("case_strength", "متوسط")
+        appeal_risk = analysis.get("appeal_risk", "متوسط")
+        contradictions = analysis.get("contradictions", [])
+        principles = analysis.get("legal_principles", [])
+        recommendation = analysis.get("recommendation", {}).get("recommendation_ar", "لا تتوفر توصية")
+        recommendation_en = analysis.get("recommendation", {}).get("recommendation_en", "No recommendation")
+        
+        ar_principles = "\n".join([f"- **[{p.get('name_ar')}]({p.get('url')})**: {p.get('description_ar', '')}" if p.get('url') else f"- **{p.get('name_ar')}**: {p.get('description_ar', '')}" for p in principles[:3]]) if principles else "- لم تتوفر مبادئ قطعية متعلقة بالنص."
+        en_principles = "\n".join([f"- **[{p.get('name_en')}]({p.get('url')})**" if p.get('url') else f"- **{p.get('name_en')}**" for p in principles[:3]]) if principles else "- No explicit principles found."
+        
+        ar_contradictions = "\n".join([f"- ⚠️ {c}" for c in contradictions]) if contradictions else "- ✅ لم يتم رصد تناقضات بارزة"
+        en_contradictions = "\n".join([f"- ⚠️ {c}" for c in contradictions]) if contradictions else "- ✅ No notable contradictions detected"
+        
+        memo_ar = f"""### مذكرة تحضيرية للقاضي (Bench Memo) ⚖️
+
+**توصيف الدعوى:** {case_type_ar}
+**مؤشر القوة القانونية:** {case_strength}
+**مخاطر استئناف الحكم:** {appeal_risk}
+
+#### 1. الملاحظات والتناقضات المرصودة:
+{ar_contradictions}
+
+#### 2. المبادئ والمواد المستند إليها:
+{ar_principles}
+
+#### 3. التوجيه القضائي المقترح:
+{recommendation}"""
+
+        memo_en = f"""### Judicial Bench Memo ⚖️
+
+**Case Classification:** {case_type_en}
+**Case Strength Index:** {case_strength}
+**Appeal Risk:** {appeal_risk}
+
+#### 1. Detected Contradictions/Flags:
+{en_contradictions}
+
+#### 2. Anchored Legal Principles:
+{en_principles}
+
+#### 3. Proposed Judicial Direction:
+{recommendation_en}"""
+
+        lang = analysis.get("language", "ar")
+        final_text = memo_ar if lang == "ar" else memo_en
+
+        return {
+            "text": final_text,
+            "intent": "bench_memo",
+            "suggested_actions": [
+                {"label": "Draft Judgment | مسودة حكم", "action": "draft_enforcement"},
+                {"label": "Similar Cases | قضايا مشابهة", "action": "similar_cases"}
+            ],
+            "citations": self._format_case_citations(analysis.get("related_cases", []))
+        }
+
     # --- STATIC LEGAL TEMPLATES ---
     CLAIM_TEMPLATE_AR = """### مسودة لائحة دعوى
  
@@ -1318,3 +1455,27 @@ STRICT INSTRUCTIONS:
             "has_analysis": self.context.analysis_data is not None,
             "message_count": len(self.context.messages)
         }
+
+    def _link_law_citations(self, text: str) -> str:
+        """
+        Scans text for references like "المادة 77" or "Article 77".
+        If found and NOT already markdown-linked, wraps it in a markdown hyperlink
+        pointing to the BOE.
+        """
+        if not text:
+            return ""
+
+        # Using a universal anchor link to Saudi Labor Law for demo/POC purposes.
+        # Can easily be extended to dynamically resolve specific Law GUIDs via DB hit.
+        boe_base_url = "https://laws.boe.gov.sa/BoeLaws/Laws/LawDetails/16b97fd5-6490-449e-87fe-a9a700f26f25/1"
+        
+        # Regex to find unlinked instances of "المادة X" or "Article X" or "الماده X" 
+        # Negative lookbehind (?<!\[) and lookahead (?!\s*\]) ensure we don't double-link existing markdown
+        pattern_ar = r'(?<!\[)(المادة\s+\d+|الماده\s+\d+)(?!\s*\]|\()'
+        pattern_en = r'(?<!\[)(Article\s+\d+)(?!\s*\]|\()'
+        
+        # Replace occurrences with markdown links
+        linked_text = re.sub(pattern_ar, rf'[\1]({boe_base_url})', text)
+        linked_text = re.sub(pattern_en, rf'[\1]({boe_base_url})', linked_text)
+        
+        return linked_text

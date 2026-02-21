@@ -106,6 +106,9 @@ class AnalyzeResponse(BaseModel):
     entities: Optional[Dict[str, Any]] = None
     text: Optional[str] = None  # Added to return original text
     related_cases: List[RelatedCase] = []
+    case_strength: Optional[str] = None
+    appeal_risk: Optional[str] = None
+    contradictions: List[str] = []
 
 class DraftRequest(BaseModel):
     case_type: str

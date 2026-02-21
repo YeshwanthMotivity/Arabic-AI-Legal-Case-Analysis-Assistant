@@ -24,6 +24,7 @@ class ChatRouter:
             "outcome": getattr(self.engine, "_handle_outcome", self.engine._handle_general_inquiry),
             "compensation": getattr(self.engine, "_handle_compensation", self.engine._handle_general_inquiry),
             "entities": getattr(self.engine, "_handle_entities", self.engine._handle_general_inquiry),
+            "bench_memo": getattr(self.engine, "_handle_bench_memo", self.engine._handle_general_inquiry),
         }
 
     def get_handler(self, intent: str) -> Callable:
