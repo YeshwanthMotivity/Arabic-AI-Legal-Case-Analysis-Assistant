@@ -41,6 +41,7 @@ export function Message({
 }) {
   const [copied, setCopied] = useState(false);
   const [feedbackGiven, setFeedbackGiven] = useState(null);
+  const [clickedActions, setClickedActions] = useState([]);
 
   const isUser = message.role === 'user';
   const messageClass = isUser ? 'user' : 'assistant';
@@ -160,17 +161,22 @@ export function Message({
 
         {message.suggested_actions && message.suggested_actions.length > 0 && !isUser && (
           <div className="suggested-actions-container">
-            {message.suggested_actions.map((action, idx) => (
-              <button
-                key={idx}
-                className="suggested-action-btn"
-                onClick={() => onActionClick?.(action.action, action.label, message.id)}
-              >
-                <div className="btn-text-stack">
-                  <span>{getLocalizedActionLabel(action.label, action.action, language)}</span>
-                </div>
-              </button>
-            ))}
+            {message.suggested_actions
+              .filter(action => !clickedActions.includes(action.action))
+              .map((action, idx) => (
+                <button
+                  key={idx}
+                  className="suggested-action-btn"
+                  onClick={() => {
+                    setClickedActions(prev => [...prev, action.action]);
+                    onActionClick?.(action.action, action.label, message.id);
+                  }}
+                >
+                  <div className="btn-text-stack">
+                    <span>{getLocalizedActionLabel(action.label, action.action, language)}</span>
+                  </div>
+                </button>
+              ))}
           </div>
         )}
 

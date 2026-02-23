@@ -294,7 +294,7 @@ async def execute_full_analysis(text: str, top_k: int = 5) -> AnalyzeResponse:
     for rc in related_cases_list:
         # Check if identical (distance ~ 0) or text is identical
         # rc.similarity_score is typically 100.0 for identical
-        if rc.similarity_score < 99.5: 
+        if rc.similarity_score < 99.5 and rc.similarity_score >= 50.0: 
              similar_cases_for_trends.append(rc.case)
     
     trends_raw = analyze_trends(similar_cases_for_trends)

@@ -143,7 +143,7 @@ class LocalLLM:
             logger.error("LLM generation error: %r", e, exc_info=True)
             return "Sorry, a model generation error occurred."
 
-    def generate_recommendations(self, case_analysis: dict, data_availability: dict) -> str:
+    def generate_recommendations(self, case_analysis: dict, data_availability: dict, system_prompt: str = None) -> str:
         """Generate recommendation text with strict anti-hallucination instructions."""
         data_context = self._build_data_availability_context(data_availability)
         prompt = (
@@ -155,11 +155,16 @@ class LocalLLM:
             "RULES:\n"
             "1) Never invent statistics or percentages.\n"
             "2) Use only provided values.\n"
-            "3) If insufficient data, explicitly say so and provide principle-based guidance only.\n"
+            "3) If insufficient statistical data, explicitly say so and generate a strong, domain-appropriate recommendation relying ONLY on the provided Legal Principles and Case Facts.\n"
             "4) Do not imply trend certainty without sample support.\n"
-            "5) Separate data-driven claims from general legal guidance.\n"
+            "5) Use the Legal Principles directly to provide an actionable next-step recommendation to the user.\n"
         )
-        output = self.generate(prompt, system_prompt=self._get_safe_analysis_system_prompt())
+        # We need to accept the system_prompt passed in from `chat_engine.py` (which includes actionable tasks)
+        # If it's passed into this function we should use it.  Wait, generate_recommendations does NOT accept system_prompt as an argument.
+        # Let's fix generate_recommendations to accept system_prompt with a default.
+
+        final_sys_prompt = system_prompt if system_prompt else self._get_safe_analysis_system_prompt()
+        output = self.generate(prompt, system_prompt=final_sys_prompt)
 
         # Optional post-generation validation guard.
         try:
@@ -197,5 +202,5 @@ class LocalLLM:
         return (
             "You are a legal analysis assistant focused on accuracy.\n"
             "Do not fabricate statistics, case counts, rates, or precedent claims.\n"
-            "When data is insufficient, state this clearly and provide general legal principles only.\n"
+            "When data is insufficient, state this clearly and provide ACTIONABLE legal recommendations based entirely on the provided Legal Principles and Case Facts.\n"
         )

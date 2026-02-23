@@ -698,6 +698,12 @@ function App() {
         document.querySelector('input[type="file"]')?.click();
         break;
       case 'paste_text':
+        // Focus the chat input box instead of sending a message
+        const chatInput = document.querySelector('.chat-message-input');
+        if (chatInput) {
+          chatInput.focus();
+        }
+        break;
       case 'learn_more':
       case 'full_analysis':
       case 'similar_cases':

@@ -643,6 +643,8 @@ How can I help you today?""",
                     "amount": recommendation.get("award_amount"),
                     "trends": trends,
                     "recommendation": recommendation,
+                    "legal_principles": analysis.get("legal_principles", []),
+                    "case_text": analysis.get("text", "No text provided.")
                 }
                 validator = DataAvailabilityValidator()
                 data_report = validator.generate_data_report(
@@ -664,25 +666,37 @@ How can I help you today?""",
                 else:
                     system_prompt += """
 السياق الحالي: مرحلة ما قبل التقاضي/نزاع (Pre-litigation).
-المهام المطلوبة في التوصية:
-1. حصر الأدلة والأسانيد (العقود، المراسلات، تقارير الخبرة).
-2. استكمال المتطلبات النظامية حسب نوع القضية.
-3. تقدير الموقف القانوني بناءً على سوابق المحاكم العامة."""
+المهام المطلوبة في التوصية (خاصةً عند عدم توفر بيانات وسوابق كافية):
+1. اقرأ وقائع القضية والمبادئ القانونية المرفقة بعناية فائقة.
+2. استخرج التوصية بناءً على المبادئ القانونية (Legal Principles) المطبقة على هذه الوقائع.
+3. حصر الأدلة والأسانيد المطلوبة بشكل مخصص لهذه الحالة.
+4. تقدير الموقف القانوني بناءً على المبادئ فقط (بدون اختلاق إحصائيات)."""
                 
                 generated_rec = self.llm.generate_recommendations(case_context, data_report)
                 
                 # Global Currency Scrub
                 generated_rec = generated_rec.replace("Rs.", "SAR").replace("rupees", "SAR").replace("Rupees", "SAR")
                 
+                actions = []
+                if is_judgement:
+                     actions = [
+                        {"label": "Enforcement Petition | طلب تنفيذ", "action": "draft_enforcement"},
+                        {"label": "Appeal Memo | مذكرة اعتراض", "action": "draft_appeal"}
+                     ]
+                else:
+                     actions = [
+                        {"label": "Draft Claim | كتابة لائحة دعوى", "action": "draft_claim"},
+                        {"label": "Draft Defense | كتابة مذكرة دفاع", "action": "draft_defense"}
+                     ]
+                
                 return {
                     "text": generated_rec,
                     "intent": "recommendation",
-                    "suggested_actions": [
-                        {"label": "Similar Cases | قضايا مشابهة", "action": "similar_cases"},
-                        {"label": "Full Analysis | تحليل شامل", "action": "full_analysis"}
-                    ]
+                    "suggested_actions": actions
                 }
-            except: pass
+            except Exception as e:
+                logger.error(f"LLM Recommendation Generation failed: {e}")
+                pass
 
         if is_judgement:
              actions = [
@@ -696,7 +710,7 @@ How can I help you today?""",
              ]
 
         return {
-            "text": str(recommendation.get("recommendation_ar", "لا تتوفر توصية حالياً.")),
+            "text": str(recommendation.get("recommendation_ar", "لا تتوفر توصية استشارية. يرجى تحليل قضية للحصول على توصيات مخصصة.")),
             "intent": "recommendation",
             "suggested_actions": actions
         }
