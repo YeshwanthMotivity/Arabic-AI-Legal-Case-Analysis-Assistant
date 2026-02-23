@@ -391,7 +391,7 @@ class ChatEngine:
             if HAS_TRANSLATOR and assistant_text and any('\u0600' <= char <= '\u06FF' for char in assistant_text):
                 try:
                     is_bilingual = "---" in assistant_text
-                    if not is_bilingual and not str(intent).startswith("draft"):
+                    if not is_bilingual:
                         translated_text = GoogleTranslator(source='auto', target='en').translate(assistant_text[:4500])
                         if translated_text and translated_text.lower() != assistant_text.lower():
                             response["assistant_translation"] = translated_text
